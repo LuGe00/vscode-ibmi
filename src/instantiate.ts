@@ -13,6 +13,7 @@ import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
+import { LiblFS } from "./filesystems/qsys/liblFs";
 
 export let instance: Instance;
 
@@ -87,6 +88,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
+      isCaseSensitive: false
+    }),
+    vscode.workspace.registerFileSystemProvider(`libl`, new LiblFS(context), {
       isCaseSensitive: false
     })
   );

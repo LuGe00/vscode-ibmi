@@ -45,15 +45,17 @@ export function isProtectedFilter(filter?: string): boolean {
 
 export class QSysFS implements vscode.FileSystemProvider {
     private readonly savedAsMembers: Set<string> = new Set;
-    private readonly sourceDateHandler: SourceDateHandler;
+    private static sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
     private extendedMemberSupport = false;
     private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
 
     constructor(context: vscode.ExtensionContext) {
-        this.sourceDateHandler = new SourceDateHandler(context);
-        this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
+        if(!QSysFS.sourceDateHandler) {
+            QSysFS.sourceDateHandler = new SourceDateHandler(context);
+        }
+        this.extendedContent = new ExtendedIBMiContent(QSysFS.sourceDateHandler);
 
         instance.subscribe(
             context,
@@ -99,7 +101,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         }
 
-        this.sourceDateHandler.setEnabled(this.extendedMemberSupport);
+        QSysFS.sourceDateHandler.setEnabled(this.extendedMemberSupport);
     }
 
     async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
