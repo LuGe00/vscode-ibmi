@@ -1130,21 +1130,16 @@ export default class IBMiContent {
   }
 
   /**
-   * Returns signature and version of an SQL component, assuming its description follows the pattern '<version> - <text>' 
+   * Returns the signature of an SQL component
    * @param library 
    * @param name 
    * @param type 
    * @returns 
    */
-  async getSQLComponentInfo(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
-    const row = (await this.ibmi.runSQL( /* sql */
-      `select hash(RTNNAME concat ROUTINEDEF) SIGNATURE, trim(substr(REMARKS, 1, locate('-', REMARKS) - 1)) VERSION 
-       from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
-    )).at(0);
-
-    if (row) {
-      return { version: row.VERSION as string, signature: row.SIGNATURE as string }
-    }
+  async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
+    return (await this.ibmi.runSQL(
+      /* sql */`select hash(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
+    )).at(0)?.SIGNATURE as string;
   }
 
   async getSHA256FileHash(remoteFile: string) {

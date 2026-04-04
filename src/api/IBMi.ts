@@ -522,8 +522,9 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
       // We always start up Mapepire first
+      let mapepireState;
       try {
-        await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
+        mapepireState = await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
       }
       catch (error: any) {
         if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
@@ -532,9 +533,7 @@ export default class IBMi {
       }
 
       // Check Mapepire state after startup
-      const mapepireStates = this.componentManager.getComponentStates();
-      const mapepireState = mapepireStates.find(s => s.id.name === Mapepire.ID);
-      this.appendOutput(`Mapepire state after startup: ${mapepireState?.state || 'not found'}\n`);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState || 'not found'}\n`);
 
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {

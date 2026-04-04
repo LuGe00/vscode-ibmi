@@ -1,40 +1,25 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
-import { ComponentState, IBMiComponent } from "./component";
+import { IBMiComponent, SecureComponentState } from "./component";
 
 export class GetNewLibl implements IBMiComponent {
   static ID = "GetNewLibl";
-  private readonly procedureName = 'GETNEWLIBL';
-  private readonly currentVersion = 1;
-  private installedVersion = 0;
-
-  reset() {
-    this.installedVersion = 0;
-  }
+  private readonly currentVersion = 2;
+  private readonly currentSignature = "";
+  private readonly procedureName = `GETNEWLIBL_${this.currentVersion}`;
 
   getIdentification() {
-    return { name: GetNewLibl.ID, version: this.currentVersion };
+    return { name: GetNewLibl.ID, version: this.currentVersion, signature: this.currentSignature };
   }
 
-  async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysprocs where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
-    if (result?.LONG_COMMENT) {
-      const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        this.installedVersion = Number(comment.substring(0, dash).trim());
-      }
-    }
-    if (this.installedVersion < this.currentVersion) {
-      return `NeedsUpdate`;
-    }
-
-    return `Installed`;
+  async getRemoteState(connection: IBMi): Promise<SecureComponentState> {
+    const remoteSignature = await connection.getContent().getSQLRoutineSignature(connection.getConfig().tempLibrary.toUpperCase(), this.procedureName, "PROCEDURE");
+    return { status: remoteSignature ? "Installed" : "NotInstalled", remoteSignature };
   }
 
-  update(connection: IBMi): Promise<ComponentState> {
+  update(connection: IBMi): Promise<SecureComponentState> {
     const config = connection.getConfig();
-    return connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
+    return connection.withTempDirectory(async (tempDir): Promise<SecureComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
       await connection.getContent().writeStreamfileRaw(tempSourcePath, this.getSource(config.tempLibrary));
@@ -44,12 +29,11 @@ export class GetNewLibl implements IBMiComponent {
         noLibList: true
       });
 
-      if (!result.code) {
-        this.installedVersion = this.currentVersion;
-        return `Installed`;
-      } else {
-        return `Error`;
+      if (result.code !== 0) {
+        throw Error(result.stderr || result.stdout);
       }
+
+      return this.getRemoteState(connection);
     });
   }
 

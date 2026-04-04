@@ -1,13 +1,15 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
-import { ComponentState, IBMiComponent } from "../components/component";
+import { IBMiComponent, SecureComponentState } from "../components/component";
 import { IBMiMember } from "../types";
 
 export class GetMemberInfo implements IBMiComponent {
   static ID = 'GetMemberInfo';
-  private readonly procedureName = 'GETMBRINFO';
-  private readonly currentVersion = 3;
+  private readonly currentVersion = 4;
+  private readonly currentSignature = 'GETMBRINFO';
+
+  private readonly procedureName = `GETMBRINFO_${this.currentVersion}`;
   private installedVersion = 0;
 
   reset() {
@@ -15,26 +17,15 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: GetMemberInfo.ID, version: this.currentVersion };
+    return { name: GetMemberInfo.ID, version: this.currentVersion, signature: this.currentSignature };
   }
 
-  async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
-    if (result?.LONG_COMMENT) {
-      const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        this.installedVersion = Number(comment.substring(0, dash).trim());
-      }
-    }
-    if (this.installedVersion < this.currentVersion) {
-      return `NeedsUpdate`;
-    }
-
-    return `Installed`;
+  async getRemoteState(connection: IBMi): Promise<SecureComponentState> {
+    const remoteSignature = await connection.getContent().getSQLRoutineSignature(connection.getConfig().tempLibrary.toUpperCase(), this.procedureName, "PROCEDURE");
+    return { status: remoteSignature ? "Installed" : "NotInstalled", remoteSignature };
   }
 
-  async update(connection: IBMi): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<SecureComponentState> {
     return connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
       await connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(connection.getConfig().tempLibrary, this.procedureName, this.currentVersion));
@@ -44,16 +35,15 @@ export class GetMemberInfo implements IBMiComponent {
         noLibList: true
       });
 
-      if (result.code) {
-        return `Error`;
-      } else {
-        this.installedVersion = this.currentVersion;
-        return `Installed`;
+      if (result.code !== 0) {
+        throw Error(result.stderr || result.stdout);
       }
+
+      return this.getRemoteState(connection);
     });
   }
 
-  private static parseDateString(tsString: string|undefined): Date | undefined {
+  private static parseDateString(tsString: string | undefined): Date | undefined {
     if (!tsString) {
       return undefined;
     }
@@ -62,7 +52,7 @@ export class GetMemberInfo implements IBMiComponent {
     if (!isNaN(possibleDate.getTime())) {
       return possibleDate;
     }
-    
+
     const dateParts = tsString.split('-');
     const timeParts = dateParts[3].split('.');
 
