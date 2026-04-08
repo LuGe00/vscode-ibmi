@@ -150,7 +150,8 @@ export class ComponentManager {
       await newComponent.overrideState(installedBefore.state);
     }
 
-    if (componentId.signature && componentId.signature !== newComponent.getState().remoteSignature) {      
+    const newState = newComponent.getState();
+    if (newState.status === "Installed" && componentId.signature && componentId.signature !== newState.remoteSignature) {      
       throw new Error(`Component ${componentId.name} version ${componentId.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
     }
 
