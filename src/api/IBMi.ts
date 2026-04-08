@@ -533,7 +533,7 @@ export default class IBMi {
       }
 
       // Check Mapepire state after startup
-      this.appendOutput(`Mapepire state after startup: ${mapepireState || 'not found'}\n`);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
 
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
