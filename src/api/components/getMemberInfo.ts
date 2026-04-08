@@ -10,11 +10,6 @@ export class GetMemberInfo implements IBMiComponent {
   private readonly currentSignature = 'GETMBRINFO';
 
   private readonly procedureName = `GETMBRINFO_${this.currentVersion}`;
-  private installedVersion = 0;
-
-  reset() {
-    this.installedVersion = 0;
-  }
 
   getIdentification() {
     return { name: GetMemberInfo.ID, version: this.currentVersion, signature: this.currentSignature };
@@ -159,6 +154,7 @@ function getSource(library: string, name: string, version: number) {
     `)`,
     `specific ${name}`,
     `modifies sql data`,
+    `set option usrprf=*user, dynusrprf=*user `,
     `begin`,
     `  declare  buffer  char( 135 ) not null default '';`,
     `  declare  BUFLEN  integer     constant 135 ;`,

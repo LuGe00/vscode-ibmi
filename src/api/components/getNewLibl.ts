@@ -65,6 +65,7 @@ export class GetNewLibl implements IBMiComponent {
     return Buffer.from([
       `CREATE OR REPLACE PROCEDURE ${library}.${this.procedureName}(IN COMMAND VARCHAR(2000))`,
       `DYNAMIC RESULT SETS 1 `,
+      `SET OPTION USRPRF=*USER, DYNUSRPRF=*USER `,
       `BEGIN`,
       `  DECLARE clibl CURSOR FOR `,
       `    SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME`,

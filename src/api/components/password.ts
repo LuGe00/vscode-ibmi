@@ -31,6 +31,7 @@ export class PasswordManager implements IBMiComponent {
           create or replace procedure ${procedure}(oldPassword varchar(128), newPassword varchar(128))
           language sql
           not deterministic
+          set option usrprf=*user, dynusrprf=*user
           begin
             call QSYS.QSYCHGPW(
               '*CURRENT  ', oldPassword, newPassword,
